@@ -1,0 +1,73 @@
+/*Calling bash directly in wine will create a non-blocking process.
+ * 	ref: https://bugs.winehq.org/show_bug.cgi?id=18335
+ *As a result, when nmake calling the bash cl wrapper, it will process the
+ *following link or rt commands without waiting for the object files to be
+ *generated.
+ *This program corporate with the bash cl wrapper. The two programs sync
+ *use a random file under the tmp directory.
+ *
+ *To x-build this program on Linux:
+ *	GOOS=windows GOARCH=amd64 go build -o cl.exe cl.go
+ */
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
+)
+
+var tmpPrefix string = "pangine-gt-"
+var doneSuffix string = "-done"
+var retSuffix string = "-ret"
+var tmpDir string = "z:\\tmp" // The mirror linux /tmp dir in wine
+
+func main() {
+	tmpRegFile, err := ioutil.TempFile(tmpDir, tmpPrefix)
+	if err != nil {
+		fmt.Println("Create temp file error")
+		panic(err)
+	}
+	tmpRegFileName := tmpRegFile.Name()
+	tmpRegFile.Close()
+	tmpDoneFileName := tmpRegFileName + doneSuffix
+	tmpRetFileName := tmpRegFileName + retSuffix
+	tmpFileNameBase := filepath.Base(tmpRegFileName)
+	gtclArgs := []string{tmpFileNameBase}
+	gtclArgs = append(gtclArgs, os.Args...)
+	gtcl := exec.Command("gtcl.sh", gtclArgs...)
+	gtcl.Start()
+
+	// Wait until tmp done file is created by the bash cl wrapper
+	for _, err := os.Stat(tmpDoneFileName); os.IsNotExist(err); _, err = os.Stat(tmpDoneFileName) {
+		// cl wrapper not finished yet
+		time.Sleep(20 * time.Millisecond)
+	}
+	// cl wrapper returned, get return value from tmp ret file
+	bin, err := os.Open(tmpRetFileName)
+	if err != nil {
+		fmt.Println("Open tmp ret file error")
+		panic(err)
+	}
+	var ret int
+	reader := bufio.NewScanner(bin)
+	for reader.Scan() {
+		fields := strings.Fields(reader.Text())
+		if len(fields) >= 1 {
+			ret64, _ := strconv.ParseInt(fields[0], 10, 32)
+			ret = int(ret64)
+		}
+		break
+	}
+	bin.Close()
+	os.Remove(tmpRetFileName)
+	os.Remove(tmpDoneFileName)
+	os.Remove(tmpRegFileName)
+	os.Exit(ret)
+}
