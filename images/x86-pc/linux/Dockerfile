@@ -21,8 +21,8 @@ ARG SYSTEM_TRIPLE
 COPY packages/${PKG}/${SYSTEM_TRIPLE}/lib_install.sh .
 RUN ./lib_install.sh
 ENV LINUX_SCRIPTS_DIR ${USER_HOME}/linux_scripts
-ENV CC ${LINUX_SCRIPTS_DIR}/gt_cc.sh
-ENV CXX ${LINUX_SCRIPTS_DIR}/gt_cxx.sh
+ENV CC ${GT_ORIGIN_CC:+${LINUX_SCRIPTS_DIR}/gt_cc.sh}
+ENV CXX ${GT_ORIGIN_CXX:+${LINUX_SCRIPTS_DIR}/gt_cxx.sh}
 
 # Prepare the build directory
 USER ${USER}
