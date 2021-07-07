@@ -1,7 +1,5 @@
 #!/bin/bash
 
-export GT_ORIGIN_CC=${LINUX_SCRIPTS_DIR}/clang_wrapper.sh
-
 source ${LINUX_SCRIPTS_DIR}/run_prefix.sh
 
 mkdir build
