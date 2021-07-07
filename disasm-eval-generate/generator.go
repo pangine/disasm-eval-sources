@@ -50,6 +50,7 @@ func main() {
 	clnFlag := flag.Bool("clean", false, "Whether to clean the generated docker images after build. By default it is false if not specified.")
 	rcrFlag := flag.Bool("recreate", false, "Whether to create the docker images if it already exits. By default it is false if not specified.")
 	iccKFlag := flag.String("icc_key", "NULL", "serial key for icc installation.")
+	forceFlag := flag.String("frc", "", "Force to run an unsupported compiler and speicify the docker image to use (i.e. ubuntu:18.04).")
 
 	flag.Parse()
 	arch := *archFlag
@@ -63,6 +64,7 @@ func main() {
 	cln := *clnFlag
 	rcr := *rcrFlag
 	iccKey := *iccKFlag
+	force := *forceFlag
 
 	if pkg == "" {
 		fmt.Println("You must specify a package name to compile")
@@ -117,9 +119,13 @@ func main() {
 
 	var distro string
 	var ok bool
-	if distro, ok = utils.CplToDistroMap[cpl]; !ok {
+	if distro, ok = utils.CplToDistroMap[cpl]; !ok && force == "" {
 		fmt.Printf("ERROR: Unsupported compiler: %s\n", cpl)
 		os.Exit(1)
+	}
+
+	if force != "" {
+		distro = force
 	}
 
 	escDistro := strings.ReplaceAll(distro, ":", "-")
